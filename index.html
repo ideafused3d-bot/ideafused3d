@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FORGE3D — FDM 精密打樣與功能零件代印</title>
+<meta name="description" content="FDM 精密打樣與功能零件代印。機構件、夾治具、產品原型。支援 STEP / STL，PETG・ABS・ASA 多材料，公差穩定，24 小時內報價。台灣本地服務。" />
+
+<!-- ====== 字體 ====== -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800;900&family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" />
+
+<style>
+  :root{
+    --bg:        #0a0c0a;
+    --bg-2:      #0f120f;
+    --panel:     #12151200;
+    --card:      #14181400;
+    --line:      rgba(255,255,255,0.09);
+    --line-2:    rgba(255,255,255,0.16);
+    --ink:       #ECEFEA;
+    --ink-dim:   #8C948B;
+    --ink-faint: #5b635b;
+    --green:     #2DE36C;
+    --green-dim: #1ea854;
+    --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+    --disp: "Archivo", "Noto Sans TC", system-ui, sans-serif;
+    --body: "Noto Sans TC", "Archivo", system-ui, sans-serif;
+    --maxw: 1180px;
+  }
+
+  *{ box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
+  @media (prefers-reduced-motion: reduce){ html{ scroll-behavior:auto; } }
+
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--body);
+    font-size:16px;
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  /* faint build-plate grid in the background */
+  body::before{
+    content:"";
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 64px 64px;
+    -webkit-mask-image: radial-gradient(circle at 30% 0%, #000 0%, transparent 70%);
+            mask-image: radial-gradient(circle at 30% 0%, #000 0%, transparent 70%);
+    opacity:.5;
+  }
+  .wrap{ width:100%; max-width:var(--maxw); margin:0 auto; padding:0 28px; position:relative; z-index:1; }
+
+  a{ color:inherit; text-decoration:none; }
+  img{ max-width:100%; display:block; }
+
+  .mono{ font-family:var(--mono); }
+  .eyebrow{
+    font-family:var(--mono); font-size:.72rem; letter-spacing:.18em;
+    text-transform:uppercase; color:var(--green); font-weight:500;
+  }
+  .eyebrow .br{ color:var(--ink-faint); }
+  .sec-label{
+    font-family:var(--mono); font-size:.74rem; letter-spacing:.16em;
+    color:var(--green); text-transform:uppercase; display:flex; align-items:center; gap:14px;
+    margin-bottom:34px;
+  }
+  .sec-label::after{ content:""; height:1px; flex:1; background:var(--line); }
+
+  h2.big{
+    font-family:var(--disp); font-weight:900; line-height:1.02;
+    font-size:clamp(2.1rem, 5.5vw, 3.6rem); letter-spacing:-.01em; margin:0 0 8px;
+  }
+
+  /* ============ NAV ============ */
+  header.nav{
+    position:sticky; top:0; z-index:50;
+    backdrop-filter:saturate(140%) blur(10px);
+    background:rgba(10,12,10,.72);
+    border-bottom:1px solid var(--line);
+  }
+  .nav-in{ display:flex; align-items:center; justify-content:space-between; height:64px; }
+  .brand{ font-family:var(--mono); font-weight:700; letter-spacing:.04em; font-size:1.02rem; }
+  .brand b{ color:var(--green); }
+  .brand .v{ color:var(--ink-faint); font-weight:400; font-size:.78rem; margin-left:6px; }
+  nav.links{ display:flex; align-items:center; gap:30px; }
+  nav.links a{ font-family:var(--mono); font-size:.82rem; color:var(--ink-dim); transition:color .15s; }
+  nav.links a:hover{ color:var(--ink); }
+  .btn{
+    font-family:var(--mono); font-size:.82rem; font-weight:500;
+    padding:9px 18px; border-radius:2px; border:1px solid var(--green);
+    color:var(--green); background:transparent; cursor:pointer; transition:all .15s;
+    white-space:nowrap;
+  }
+  .btn:hover{ background:var(--green); color:#04140a; }
+  .btn.solid{ background:var(--green); color:#04140a; border-color:var(--green); font-weight:700; }
+  .btn.solid:hover{ background:#43f07f; }
+  .btn.ghost{ border-color:var(--line-2); color:var(--ink); }
+  .btn.ghost:hover{ background:var(--ink); color:var(--bg); border-color:var(--ink); }
+  .nav-toggle{ display:none; background:none; border:1px solid var(--line-2); color:var(--ink);
+    width:42px; height:38px; border-radius:2px; font-size:1.1rem; cursor:pointer; }
+
+  /* ============ HERO ============ */
+  .hero{ padding:84px 0 70px; }
+  .live{
+    display:inline-flex; align-items:center; gap:9px; font-family:var(--mono);
+    font-size:.74rem; letter-spacing:.14em; color:var(--ink-dim); margin-bottom:30px;
+  }
+  .dot{ width:9px; height:9px; background:var(--green); border-radius:1px;
+    box-shadow:0 0 0 0 rgba(45,227,108,.6); animation:pulse 2.2s infinite; }
+  @keyframes pulse{ 0%{box-shadow:0 0 0 0 rgba(45,227,108,.55)} 70%{box-shadow:0 0 0 10px rgba(45,227,108,0)} 100%{box-shadow:0 0 0 0 rgba(45,227,108,0)} }
+  @media (prefers-reduced-motion: reduce){ .dot{ animation:none; } }
+
+  .hero h1{
+    font-family:var(--disp); font-weight:900; letter-spacing:-.02em;
+    font-size:clamp(3.4rem, 13vw, 8.2rem); line-height:.92; margin:0;
+  }
+  .hero h1 .g{ color:var(--green); }
+  .hero p.lead{
+    margin:30px 0 0; max-width:620px; color:var(--ink-dim);
+    font-size:1.06rem; line-height:1.7;
+  }
+  .hero p.lead b{ color:var(--ink); font-weight:500; }
+  .hero .cta-row{ display:flex; gap:14px; margin-top:34px; flex-wrap:wrap; }
+  .btn.lg{ padding:14px 26px; font-size:.9rem; }
+
+  /* ============ STATS ============ */
+  .stats{ border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+  .stats-in{ display:grid; grid-template-columns:repeat(3,1fr); }
+  .stat{ padding:30px 28px; border-left:1px solid var(--line); }
+  .stat:first-child{ border-left:none; }
+  .stat .n{ font-family:var(--disp); font-weight:800; font-size:2rem; color:var(--green); line-height:1; }
+  .stat .k{ font-family:var(--mono); font-size:.76rem; color:var(--ink-dim); margin-top:9px; letter-spacing:.04em; }
+
+  /* ============ SECTION SPACING ============ */
+  section{ padding:88px 0; position:relative; }
+  section.tight{ padding:64px 0; }
+
+  /* ============ SERVICES ============ */
+  .svc-grid{ display:grid; grid-template-columns:1fr 1fr; gap:0; border-top:1px solid var(--line); border-left:1px solid var(--line); margin-top:48px; }
+  .svc{ padding:32px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); transition:background .2s; }
+  .svc:hover{ background:var(--bg-2); }
+  .svc.lead{ background:rgba(45,227,108,.04); }
+  .svc-h{ display:flex; align-items:baseline; gap:12px; }
+  .svc h3{ font-size:1.18rem; margin:0; font-weight:700; }
+  .svc .tag-lead{ font-family:var(--mono); font-size:.66rem; letter-spacing:.12em; color:var(--green); border:1px solid var(--green-dim); padding:2px 7px; border-radius:2px; }
+  .svc p{ color:var(--ink-dim); font-size:.95rem; margin:14px 0 18px; }
+  .chips{ display:flex; flex-wrap:wrap; gap:8px; }
+  .chip{ font-family:var(--mono); font-size:.72rem; color:var(--ink-dim); border:1px solid var(--line-2); padding:4px 10px; border-radius:2px; }
+  .chip b{ color:var(--ink); font-weight:500; }
+
+  .svc-note{ margin-top:0; border:1px solid var(--line); border-top:none; padding:18px 24px; font-family:var(--mono); font-size:.8rem; color:var(--ink-dim); display:flex; gap:12px; align-items:flex-start; }
+  .svc-note .bar{ width:3px; align-self:stretch; background:var(--green); flex:none; }
+  .svc-note b{ color:var(--green); font-weight:500; }
+
+  /* "我們幫你看圖" call-out */
+  .review-card{ margin-top:30px; border:1px solid var(--line-2); border-radius:3px; padding:30px 32px; background:linear-gradient(180deg, rgba(45,227,108,.05), transparent); }
+  .review-card h3{ margin:0 0 10px; font-size:1.25rem; }
+  .review-card p{ margin:0; color:var(--ink-dim); font-size:.96rem; }
+  .review-card .pts{ display:flex; flex-wrap:wrap; gap:10px 22px; margin-top:18px; }
+  .review-card .pts span{ font-family:var(--mono); font-size:.82rem; color:var(--ink); }
+  .review-card .pts span i{ color:var(--green); font-style:normal; margin-right:7px; }
+
+  /* ============ PRICING (spec-sheet style) ============ */
+  .price-wrap{ display:grid; grid-template-columns:1.15fr 1fr; gap:0; border:1px solid var(--line-2); border-radius:3px; overflow:hidden; margin-top:46px; }
+  .price-main{ padding:0; }
+  .price-row{ display:flex; align-items:center; justify-content:space-between; gap:18px; padding:18px 28px; border-bottom:1px solid var(--line); }
+  .price-row:last-child{ border-bottom:none; }
+  .price-row .lbl{ display:flex; flex-direction:column; gap:3px; }
+  .price-row .lbl b{ font-weight:500; font-size:1rem; }
+  .price-row .lbl small{ color:var(--ink-faint); font-family:var(--mono); font-size:.72rem; }
+  .price-row .val{ font-family:var(--mono); font-weight:700; color:var(--green); font-size:1rem; white-space:nowrap; }
+  .price-row.head{ background:var(--bg-2); }
+  .price-row.head b{ font-family:var(--mono); font-size:.74rem; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-dim); font-weight:500; }
+
+  .price-side{ background:var(--bg-2); border-left:1px solid var(--line-2); padding:28px; display:flex; flex-direction:column; }
+  .price-side h4{ font-family:var(--mono); font-size:.74rem; letter-spacing:.14em; text-transform:uppercase; color:var(--green); margin:0 0 18px; }
+  .ex{ display:flex; justify-content:space-between; gap:14px; padding:12px 0; border-bottom:1px dashed var(--line); }
+  .ex:last-of-type{ border-bottom:none; }
+  .ex .d{ color:var(--ink-dim); font-size:.9rem; }
+  .ex .p{ font-family:var(--mono); color:var(--ink); font-weight:700; }
+  .price-fine{ margin-top:18px; font-family:var(--mono); font-size:.74rem; line-height:1.7; color:var(--ink-faint); }
+
+  /* ============ PORTFOLIO ============ */
+  .filters{ display:flex; flex-wrap:wrap; gap:8px; margin:0 0 24px; }
+  .filters button{ font-family:var(--mono); font-size:.78rem; color:var(--ink-dim); background:transparent; border:1px solid var(--line-2); padding:7px 15px; border-radius:2px; cursor:pointer; transition:all .15s; }
+  .filters button:hover{ color:var(--ink); }
+  .filters button.on{ color:var(--green); border-color:var(--green); }
+  .work-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  .work{ border:1px solid var(--line); border-radius:3px; overflow:hidden; background:var(--bg-2); }
+  .work .ph{
+    aspect-ratio:4/3; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
+    background:
+      repeating-linear-gradient(45deg, rgba(255,255,255,.018) 0 10px, transparent 10px 20px),
+      var(--bg-2);
+    color:var(--ink-faint); font-family:var(--mono); font-size:.72rem; text-align:center; padding:14px;
+  }
+  .work .ph svg{ opacity:.5; }
+  .work .meta{ padding:14px 16px; border-top:1px solid var(--line); }
+  .work .meta b{ font-weight:500; font-size:.95rem; display:block; }
+  .work .meta small{ font-family:var(--mono); color:var(--green-dim); font-size:.74rem; }
+
+  /* ============ REVIEWS ============ */
+  .rev-top{ display:flex; gap:30px; align-items:center; border:1px solid var(--line-2); border-radius:3px; padding:26px 30px; margin-bottom:26px; flex-wrap:wrap; }
+  .rev-score{ display:flex; flex-direction:column; align-items:center; }
+  .rev-score .num{ font-family:var(--disp); font-weight:900; font-size:3rem; color:var(--green); line-height:1; }
+  .rev-score .stars{ color:var(--green); letter-spacing:2px; font-size:.9rem; margin-top:4px; }
+  .rev-score .cnt{ font-family:var(--mono); font-size:.72rem; color:var(--ink-dim); margin-top:5px; }
+  .rev-top p{ margin:0; color:var(--ink-dim); font-size:.92rem; flex:1; min-width:240px; }
+  .rev-card{ border:1px solid var(--line); border-radius:3px; padding:22px 24px; max-width:560px; }
+  .rev-card .hd{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .rev-card .hd b{ font-weight:700; }
+  .rev-card .hd .ctag{ font-family:var(--mono); font-size:.66rem; color:var(--ink-dim); border:1px solid var(--line-2); padding:2px 8px; border-radius:2px; }
+  .rev-card .hd .ss{ color:var(--green); margin-left:auto; font-size:.85rem; letter-spacing:1px; }
+  .rev-card .hd .dt{ font-family:var(--mono); font-size:.7rem; color:var(--ink-faint); }
+  .rev-card p{ margin:0; color:var(--ink); font-size:.95rem; }
+
+  /* ============ PROCESS ============ */
+  .steps{ display:grid; grid-template-columns:repeat(4,1fr); gap:0; border-left:1px solid var(--line); margin-top:46px; }
+  .step{ padding:26px 24px; border-right:1px solid var(--line); }
+  .step .no{ font-family:var(--disp); font-weight:800; font-size:2.4rem; color:var(--line-2); line-height:1; }
+  .step h4{ margin:18px 0 8px; font-size:1.02rem; font-weight:700; }
+  .step p{ margin:0; color:var(--ink-dim); font-size:.88rem; }
+  .proc-note{ margin-top:24px; border:1px solid var(--line); padding:16px 22px; font-family:var(--mono); font-size:.82rem; color:var(--ink-dim); display:flex; gap:12px; align-items:flex-start; }
+  .proc-note .bar{ width:3px; align-self:stretch; background:var(--green); flex:none; }
+  .proc-note b{ color:var(--green); font-weight:500; }
+
+  /* ============ CONTACT ============ */
+  .contact-grid{ display:grid; grid-template-columns:1fr 1.1fr; gap:48px; align-items:start; }
+  .contact-grid h2{ font-family:var(--disp); font-weight:900; line-height:1.02; font-size:clamp(2.2rem,5vw,3.4rem); margin:0 0 18px; }
+  .contact-grid h2 .g{ color:var(--green); }
+  .contact-grid .sub{ color:var(--ink-dim); margin:0 0 28px; }
+  .ch{ display:flex; align-items:center; gap:16px; border:1px solid var(--line-2); border-radius:3px; padding:16px 20px; margin-bottom:12px; transition:border-color .15s; }
+  .ch:hover{ border-color:var(--green-dim); }
+  .ch .ic{ width:40px; height:40px; flex:none; border:1px solid var(--line-2); border-radius:2px; display:grid; place-items:center; color:var(--green); }
+  .ch .k{ font-family:var(--mono); font-size:.68rem; color:var(--ink-dim); letter-spacing:.1em; }
+  .ch .v{ font-family:var(--mono); font-weight:700; font-size:.98rem; }
+  .ch .ar{ margin-left:auto; color:var(--ink-faint); }
+  .resp{ font-family:var(--mono); font-size:.76rem; color:var(--ink-dim); margin-top:18px; display:flex; align-items:center; gap:9px; }
+
+  form.quote{ border:1px solid var(--line-2); border-radius:3px; padding:30px; background:var(--bg-2); }
+  form.quote .ftitle{ font-family:var(--mono); font-size:.74rem; letter-spacing:.14em; color:var(--green); text-transform:uppercase; margin-bottom:22px; }
+  .frow{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-family:var(--mono); font-size:.72rem; color:var(--ink-dim); margin-bottom:6px; letter-spacing:.04em; }
+  .field input, .field select, .field textarea{
+    width:100%; background:var(--bg); border:1px solid var(--line-2); border-radius:2px;
+    color:var(--ink); font-family:var(--body); font-size:.92rem; padding:11px 13px; outline:none; transition:border-color .15s;
+  }
+  .field input::placeholder, .field textarea::placeholder{ color:var(--ink-faint); }
+  .field input:focus, .field select:focus, .field textarea:focus{ border-color:var(--green); }
+  .field textarea{ resize:vertical; min-height:96px; font-family:var(--body); }
+  .check{ display:flex; align-items:center; gap:10px; font-size:.86rem; color:var(--ink-dim); margin:6px 0 18px; font-family:var(--mono); }
+  .check input{ width:16px; height:16px; accent-color:var(--green); }
+  form.quote .btn.solid{ width:100%; padding:14px; font-size:.92rem; }
+  .form-alt{ text-align:center; font-family:var(--mono); font-size:.8rem; color:var(--ink-dim); margin-top:14px; }
+  .form-alt a{ color:var(--green); }
+  .form-status{ font-family:var(--mono); font-size:.82rem; margin-top:12px; text-align:center; min-height:1em; }
+
+  /* ============ FOOTER ============ */
+  footer{ border-top:1px solid var(--line); padding:46px 0 30px; position:relative; z-index:1; }
+  .foot-in{ display:flex; justify-content:space-between; gap:30px; flex-wrap:wrap; align-items:flex-start; }
+  .foot-brand .brand{ font-size:1.1rem; }
+  .foot-brand small{ display:block; color:var(--ink-dim); font-family:var(--mono); font-size:.76rem; margin-top:8px; }
+  .foot-links{ display:flex; gap:26px; }
+  .foot-links a{ font-family:var(--mono); font-size:.82rem; color:var(--ink-dim); }
+  .foot-links a:hover{ color:var(--ink); }
+  .foot-bar{ display:flex; justify-content:space-between; gap:18px; flex-wrap:wrap; margin-top:36px; padding-top:22px; border-top:1px solid var(--line); font-family:var(--mono); font-size:.74rem; color:var(--ink-faint); }
+  .foot-bar .stat-live{ color:var(--ink-dim); display:flex; align-items:center; gap:8px; }
+
+  /* ===== motion ===== */
+  /* scroll = print progress, thin bar at very top */
+  .progress{ position:fixed; top:0; left:0; height:2px; width:0; background:var(--green);
+    z-index:100; box-shadow:0 0 8px rgba(45,227,108,.7); }
+
+  /* fade-up reveal for standalone blocks */
+  .reveal{ opacity:0; transform:translateY(16px); transition:opacity .6s ease, transform .6s ease; }
+  .reveal.in{ opacity:1; transform:none; }
+
+  /* staggered children — "building up layer by layer" */
+  .stg > *{ opacity:0; transform:translateY(18px); transition:opacity .55s ease, transform .55s ease; }
+  .stg.in > *{ opacity:1; transform:none; }
+
+  /* hero headline lays down one layer at a time */
+  .hero h1 .lnw{ display:block; overflow:hidden; }
+  .hero h1 .ln{ display:block; transform:translateY(108%); animation:layerUp .72s cubic-bezier(.22,.7,.2,1) forwards; }
+  .hero h1 .ln.l1{ animation-delay:.12s; }
+  .hero h1 .ln.l2{ animation-delay:.30s; }
+  .hero h1 .ln.l3{ animation-delay:.48s; }
+  @keyframes layerUp{ to{ transform:none; } }
+
+  /* work tiles lift on hover */
+  .work-grid .work{ transition:transform .3s ease, opacity .3s ease, border-color .18s ease, box-shadow .18s ease; }
+  .work:hover{ transform:translateY(-5px); border-color:var(--green-dim); box-shadow:0 10px 30px -18px rgba(45,227,108,.5); }
+
+  @media (prefers-reduced-motion: reduce){
+    .reveal, .stg > *{ opacity:1; transform:none; transition:none; }
+    .hero h1 .ln{ animation:none; transform:none; }
+    .progress{ display:none; }
+    .work:hover{ transform:none; box-shadow:none; }
+  }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width:900px){
+    .price-wrap{ grid-template-columns:1fr; }
+    .price-side{ border-left:none; border-top:1px solid var(--line-2); }
+    .contact-grid{ grid-template-columns:1fr; gap:36px; }
+    .steps{ grid-template-columns:1fr 1fr; }
+    .step:nth-child(2){ border-right:none; }
+  }
+  @media (max-width:720px){
+    nav.links{ display:none; }
+    nav.links.open{
+      display:flex; position:absolute; top:64px; left:0; right:0; flex-direction:column; gap:0;
+      background:var(--bg); border-bottom:1px solid var(--line-2); padding:8px 0;
+    }
+    nav.links.open a{ padding:13px 28px; width:100%; }
+    nav.links.open .btn{ margin:10px 28px; text-align:center; }
+    .nav-toggle{ display:block; }
+    .stats-in{ grid-template-columns:1fr; }
+    .stat{ border-left:none; border-top:1px solid var(--line); }
+    .stat:first-child{ border-top:none; }
+    .svc-grid{ grid-template-columns:1fr; }
+    .svc{ border-right:none; }
+    .work-grid{ grid-template-columns:1fr 1fr; }
+    .steps{ grid-template-columns:1fr; }
+    .step{ border-right:none; border-bottom:1px solid var(--line); }
+    .frow{ grid-template-columns:1fr; }
+    section{ padding:64px 0; }
+    .hero{ padding:54px 0 50px; }
+  }
+  @media (max-width:440px){
+    .work-grid{ grid-template-columns:1fr; }
+    .wrap{ padding:0 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+
+<!-- ================= NAV ================= -->
+<header class="nav">
+  <div class="wrap nav-in">
+    <a href="#top" class="brand">FORGE<b>3D</b><span class="v">[V1.0]</span></a>
+    <nav class="links" id="navlinks">
+      <a href="#work">作品集</a>
+      <a href="#services">服務</a>
+      <a href="#pricing">計價</a>
+      <a href="#process">流程</a>
+      <a href="#reviews">客評</a>
+      <a href="#contact" class="btn solid">上傳圖檔 · 報價</a>
+    </nav>
+    <button class="nav-toggle" id="navToggle" aria-label="選單">☰</button>
+  </div>
+</header>
+
+<!-- ================= HERO ================= -->
+<main id="top">
+<section class="hero">
+  <div class="wrap">
+    <span class="live"><span class="dot"></span>[ LIVE · 接單中 ]</span>
+    <h1>
+      <span class="lnw"><span class="ln l1">LAYER</span></span>
+      <span class="lnw"><span class="ln l2 g">BY</span></span>
+      <span class="lnw"><span class="ln l3">LAYER</span></span>
+    </h1>
+    <p class="lead">
+      <b>FDM 精密打樣與功能零件代印</b> — 機構件、夾治具、產品原型。<br />
+      支援 STEP / STL，PETG・ABS・ASA 多材料，公差穩定，<b>24 小時內報價</b>。
+    </p>
+    <div class="cta-row">
+      <a href="#contact" class="btn solid lg">上傳圖檔 · 24 小時報價 →</a>
+      <a href="#work" class="btn ghost lg">查看作品集</a>
+    </div>
+  </div>
+</section>
+</main>
+
+<!-- ================= STATS ================= -->
+<div class="stats">
+  <div class="wrap stats-in">
+    <div class="stat"><div class="n" data-count="24hr">24hr</div><div class="k">平均報價時間</div></div>
+    <div class="stat"><div class="n">STEP / STL</div><div class="k">工程圖檔皆收</div></div>
+    <div class="stat"><div class="n" data-count="50+">50+</div><div class="k">完成件數</div></div>
+  </div>
+</div>
+
+<!-- ================= SERVICES ================= -->
+<section id="services">
+  <div class="wrap">
+    <div class="sec-label reveal">[ 服務項目 ]</div>
+    <h2 class="big reveal">FDM 能做的<br />比你想的多</h2>
+
+    <div class="svc-grid stg">
+      <div class="svc lead">
+        <div class="svc-h"><h3>功能零件 / 原型</h3><span class="tag-lead">主力</span></div>
+        <p>機構件、支架、夾治具、設計驗證原型。協助選料與結構評估，公差穩定、可重複生產。</p>
+        <div class="chips"><span class="chip"><b>PETG</b> 強度</span><span class="chip"><b>ABS</b> 耐熱</span><span class="chip"><b>ASA</b> 抗 UV</span></div>
+      </div>
+
+      <div class="svc">
+        <div class="svc-h"><h3>夾治具 / 小批量</h3></div>
+        <p>產線治具、定位件、客製化工具。少量多樣最划算，改版迭代快速回應。</p>
+        <div class="chips"><span class="chip"><b>PETG</b></span><span class="chip"><b>ABS</b></span><span class="chip">分件拼合</span></div>
+      </div>
+
+      <div class="svc">
+        <div class="svc-h"><h3>Cosplay 道具 / 配件</h3></div>
+        <p>盔甲、盾牌、武器道具、面具。PETG 強度佳又輕量；大型件可分件拼合。</p>
+        <div class="chips"><span class="chip"><b>PETG</b></span><span class="chip"><b>PLA+</b></span><span class="chip">分件拼合</span></div>
+      </div>
+
+      <div class="svc">
+        <div class="svc-h"><h3>軟性 / 客製品</h3></div>
+        <p>軟性墊片、緩衝件、彈性零件，TPU 軟料可印。你提供圖檔即可，沒有圖檔也能代建模評估。</p>
+        <div class="chips"><span class="chip"><b>TPU</b> 軟性</span><span class="chip">客戶自備</span><span class="chip">代建模</span></div>
+      </div>
+    </div>
+
+    <div class="svc-note reveal">
+      <span class="bar"></span>
+      <div><b>使用機器：</b>Bambu Lab 高速 FDM 印表機，支援 AMS 自動換色系統。<b>　可用材料：</b>PLA、PLA+、PETG、ABS、ASA、TPU… 有特殊材料需求請直接詢問，可評估是否配合。</div>
+    </div>
+
+    <!-- 我們幫你看圖 -->
+    <div class="review-card reveal">
+      <h3>我們幫你看圖 — 不只印，幫你把零件做對</h3>
+      <p>收到圖檔後，免費替你評估列印可行性，避免一次就失敗重工。</p>
+      <div class="pts">
+        <span><i>›</i>壁厚與強度評估</span>
+        <span><i>›</i>最佳出力方向</span>
+        <span><i>›</i>是否需要分件</span>
+        <span><i>›</i>加強筋 / 支撐建議</span>
+        <span><i>›</i>材料選用建議</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PRICING ================= -->
+<section id="pricing" class="tight">
+  <div class="wrap">
+    <div class="sec-label reveal">[ 計價方式 ]</div>
+    <h2 class="big reveal">透明計價<br />先報價，再製作</h2>
+
+    <div class="price-wrap reveal">
+      <div class="price-main stg">
+        <div class="price-row head"><b>項目</b><b>價格</b></div>
+        <div class="price-row">
+          <div class="lbl"><b>起印價</b><small>單件最低消費</small></div>
+          <div class="val">NT$300 起</div>
+        </div>
+        <div class="price-row">
+          <div class="lbl"><b>PLA / PETG</b><small>依成品 + 支撐重量</small></div>
+          <div class="val">NT$15 / 克</div>
+        </div>
+        <div class="price-row">
+          <div class="lbl"><b>ABS / ASA</b><small>耐熱・抗 UV</small></div>
+          <div class="val">NT$20 / 克</div>
+        </div>
+        <div class="price-row">
+          <div class="lbl"><b>TPU 軟性</b><small>彈性 / 緩衝件</small></div>
+          <div class="val">NT$30 / 克</div>
+        </div>
+        <div class="price-row">
+          <div class="lbl"><b>AMS 多色</b><small>依換色次數</small></div>
+          <div class="val">+NT$100 / 件起</div>
+        </div>
+        <div class="price-row">
+          <div class="lbl"><b>代建模</b><small>無圖檔時</small></div>
+          <div class="val">NT$800 起</div>
+        </div>
+        <div class="price-row">
+          <div class="lbl"><b>急件 / 後處理</b><small>打磨・噴漆另計</small></div>
+          <div class="val">急件 +30%</div>
+        </div>
+      </div>
+
+      <div class="price-side">
+        <h4>// 參考範例</h4>
+        <div class="ex"><span class="d">小型機構件<br /><small style="color:var(--ink-faint);font-family:var(--mono)">約 30g · PETG</small></span><span class="p">≈ NT$450</span></div>
+        <div class="ex"><span class="d">中型夾治具<br /><small style="color:var(--ink-faint);font-family:var(--mono)">約 100g · PETG</small></span><span class="p">≈ NT$1,500</span></div>
+        <div class="ex"><span class="d">多色展示模型<br /><small style="color:var(--ink-faint);font-family:var(--mono)">約 120g · PLA + AMS</small></span><span class="p">≈ NT$1,900</span></div>
+        <p class="price-fine">※ 實際報價依檔案結構、尺寸、數量與後處理需求為準。上傳圖檔後 24 小時內提供完整報價。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PORTFOLIO ================= -->
+<section id="work">
+  <div class="wrap">
+    <div class="sec-label reveal">[ 作品集 ]</div>
+    <h2 class="big reveal">FDM 成品展示</h2>
+
+    <div class="filters reveal" id="filters">
+      <button class="on" data-f="all">全部</button>
+      <button data-f="func">功能零件</button>
+      <button data-f="jig">治具夾具</button>
+      <button data-f="cos">Cosplay 道具</button>
+    </div>
+
+    <div class="work-grid stg" id="workGrid">
+      <figure class="work" data-cat="func">
+        <div class="ph">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="M3 7l9 5 9-5M12 12v10"/></svg>
+          成品照 · work-1.jpg
+        </div>
+        <figcaption class="meta"><b>機構功能零件</b><small>PETG</small></figcaption>
+      </figure>
+      <figure class="work" data-cat="jig">
+        <div class="ph"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h18"/></svg>成品照 · work-2.jpg</div>
+        <figcaption class="meta"><b>定位治具</b><small>PETG</small></figcaption>
+      </figure>
+      <figure class="work" data-cat="func">
+        <div class="ph"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>成品照 · work-3.jpg</div>
+        <figcaption class="meta"><b>設計驗證原型</b><small>ABS</small></figcaption>
+      </figure>
+      <figure class="work" data-cat="cos">
+        <div class="ph"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M12 2l8 4v6c0 5-4 8-8 10-4-2-8-5-8-10V6z"/></svg>成品照 · work-4.jpg</div>
+        <figcaption class="meta"><b>Cosplay 盔甲道具</b><small>PETG</small></figcaption>
+      </figure>
+      <figure class="work" data-cat="jig">
+        <div class="ph"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 7h16M4 12h16M4 17h10"/></svg>成品照 · work-5.jpg</div>
+        <figcaption class="meta"><b>客製夾具</b><small>ABS</small></figcaption>
+      </figure>
+      <figure class="work" data-cat="func">
+        <div class="ph"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 12h4l2-7 4 14 2-7h6"/></svg>成品照 · work-6.jpg</div>
+        <figcaption class="meta"><b>TPU 軟性彈性件</b><small>TPU</small></figcaption>
+      </figure>
+    </div>
+    <p style="font-family:var(--mono);font-size:.78rem;color:var(--ink-faint);margin-top:20px">// 以上皆為 FDM 列印成品，不含光固化。</p>
+  </div>
+</section>
+
+<!-- ================= REVIEWS ================= -->
+<section id="reviews" class="tight">
+  <div class="wrap">
+    <div class="sec-label reveal">[ 客戶評價 ]</div>
+    <div class="rev-top reveal">
+      <div class="rev-score">
+        <div class="num">4.0</div>
+        <div class="stars">★★★★☆</div>
+        <div class="cnt">1 則評價</div>
+      </div>
+      <p>所有評價由真實客戶填寫，未經篩選。完成訂單後歡迎留下你的使用體驗，幫助更多人了解服務品質。</p>
+    </div>
+    <div class="rev-card reveal">
+      <div class="hd">
+        <b>阿文</b><span class="ctag">功能零件</span>
+        <span class="ss">★★★★☆</span>
+      </div>
+      <div class="dt mono" style="margin-bottom:10px">2026 / 06 / 21</div>
+      <p>功能性零件印得很準確，公差符合需求，交期也準時。唯一可以更好的是包裝可以再多一點保護。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PROCESS ================= -->
+<section id="process">
+  <div class="wrap">
+    <div class="sec-label reveal">[ 接單流程 ]</div>
+    <h2 class="big reveal">四步搞定</h2>
+
+    <div class="steps stg">
+      <div class="step"><div class="no">01</div><h4>傳送圖檔</h4><p>透過 Line 或 Email 傳送你的 STL / OBJ / STEP 檔，沒有圖檔也可描述需求，我們幫你評估。</p></div>
+      <div class="step"><div class="no">02</div><h4>確認報價</h4><p>24 小時內回覆材料建議、尺寸、交期與費用，確認後付訂金開始生產。</p></div>
+      <div class="step"><div class="no">03</div><h4>開始列印</h4><p>生產過程定期拍照更新進度，品管確認後進行後製處理。</p></div>
+      <div class="step"><div class="no">04</div><h4>出貨 / 取件</h4><p>安全包裝寄出，或自行來台灣本地取件。滿意後再付尾款。</p></div>
+    </div>
+
+    <div class="proc-note reveal">
+      <span class="bar"></span>
+      <div><b>注意：</b>確認訂單後先付 50% 訂金，成品驗收後再付尾款。<b>首次合作歡迎先試印小樣件</b>，方便你打樣與多次迭代。可簽保密協議（NDA），檔案僅用於本次製作，不外流。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CONTACT ================= -->
+<section id="contact">
+  <div class="wrap contact-grid">
+    <div class="reveal">
+      <h2>直接找我<br /><span class="g">不拘形式</span></h2>
+      <p class="sub">有任何想法都歡迎先聊。圖檔還沒準備好也沒關係，描述你的需求，我來幫你評估可行性與費用。</p>
+
+      <!-- TODO: 換成你自己的 LINE ID -->
+      <a class="ch" href="https://line.me/R/ti/p/@tina7896" target="_blank" rel="noopener">
+        <span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H7l-4 3v-4.2A8.5 8.5 0 1 1 21 11.5z"/></svg></span>
+        <span><span class="k">LINE</span><br /><span class="v">@tina7896</span></span>
+        <span class="ar">→</span>
+      </a>
+      <!-- TODO: 換成你自己的 Email（建議之後改用 @你的網域 的信箱） -->
+      <a class="ch" href="mailto:learningeto@gmail.com">
+        <span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span>
+        <span><span class="k">EMAIL</span><br /><span class="v">learningeto@gmail.com</span></span>
+        <span class="ar">→</span>
+      </a>
+      <div class="ch" style="cursor:default">
+        <span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span>
+        <span><span class="k">取件地點</span><br /><span class="v">台灣 · 預約取件</span></span>
+      </div>
+      <div class="resp"><span class="dot"></span>平均回覆時間：&lt; 4 小時</div>
+    </div>
+
+    <!--
+      表單說明：GitHub Pages 是靜態網站，沒有後端，所以表單用免費的 Formspree 收件。
+      設定方式：到 https://formspree.io 免費註冊 → 建一個表單 → 把下面 action 的 YOUR_FORM_ID 換成你拿到的代碼即可。
+      還沒設定前，訪客一樣可以直接用上方 LINE / Email 聯絡你。
+    -->
+    <form class="quote reveal" action="https://formspree.io/f/YOUR_FORM_ID" method="POST" id="quoteForm">
+      <div class="ftitle">// 上傳圖檔，24 小時內報價</div>
+      <div class="frow">
+        <div class="field"><label>姓名</label><input type="text" name="name" placeholder="張小明" required /></div>
+        <div class="field"><label>EMAIL</label><input type="email" name="email" placeholder="you@example.com" required /></div>
+      </div>
+      <div class="field">
+        <label>類型</label>
+        <select name="type">
+          <option>功能零件</option>
+          <option>機構打樣</option>
+          <option>治具夾具</option>
+          <option>Cosplay 道具</option>
+          <option>其他</option>
+        </select>
+      </div>
+      <div class="field"><label>需求描述</label><textarea name="message" placeholder="尺寸、材料偏好、顏色、數量、預計用途、交期…"></textarea></div>
+      <label class="check"><input type="checkbox" name="has_file" /> 我有 STL / OBJ / STEP 等 3D 圖檔</label>
+      <button type="submit" class="btn solid">送出詢價 →</button>
+      <div class="form-status" id="formStatus"></div>
+      <div class="form-alt">或直接加 Line：<a href="https://line.me/R/ti/p/@tina7896" target="_blank" rel="noopener">@tina7896</a></div>
+    </form>
+  </div>
+</section>
+
+<!-- ================= FOOTER ================= -->
+<footer>
+  <div class="wrap">
+    <div class="foot-in">
+      <div class="foot-brand">
+        <span class="brand">FORGE<b>3D</b> <span class="v">[V1.0]</span></span>
+        <small>FDM 功能零件與打樣代印 · 台灣本地服務</small>
+      </div>
+      <div class="foot-links">
+        <a href="#work">作品集</a>
+        <a href="#services">服務</a>
+        <a href="#pricing">計價</a>
+        <a href="#process">流程</a>
+        <a href="#contact">詢價</a>
+      </div>
+    </div>
+    <div class="foot-bar">
+      <span>© 2025 FORGE3D. All rights reserved.</span>
+      <span class="stat-live"><span class="dot"></span>接單中 · 平均 24hr 回覆</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // mobile nav
+  const tgl = document.getElementById('navToggle');
+  const links = document.getElementById('navlinks');
+  tgl.addEventListener('click', () => links.classList.toggle('open'));
+  links.querySelectorAll('a').forEach(a => a.addEventListener('click', () => links.classList.remove('open')));
+
+  // portfolio filter
+  const fbtns = document.querySelectorAll('#filters button');
+  const works = document.querySelectorAll('#workGrid .work');
+  fbtns.forEach(b => b.addEventListener('click', () => {
+    fbtns.forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    const f = b.dataset.f;
+    works.forEach(w => { w.style.display = (f === 'all' || w.dataset.cat === f) ? '' : 'none'; });
+  }));
+
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // scroll = print-progress bar
+  const prog = document.getElementById('progress');
+  if (!reduce) {
+    const onScroll = () => {
+      const h = document.documentElement;
+      const max = h.scrollHeight - h.clientHeight;
+      prog.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + '%';
+    };
+    window.addEventListener('scroll', onScroll, { passive:true });
+    onScroll();
+  }
+
+  // fade-up reveal for standalone blocks
+  const io = new IntersectionObserver((es) => {
+    es.forEach(e => { if (e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, { threshold:.12 });
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+  // staggered children — items build in one layer at a time
+  const sio = new IntersectionObserver((es) => {
+    es.forEach(e => {
+      if (e.isIntersecting){
+        const kids = [...e.target.children];
+        kids.forEach((c, i) => { c.style.transitionDelay = (i * 55) + 'ms'; });
+        e.target.classList.add('in');
+        setTimeout(() => kids.forEach(c => { c.style.transitionDelay = ''; }), kids.length * 55 + 700);
+        sio.unobserve(e.target);
+      }
+    });
+  }, { threshold:.1 });
+  document.querySelectorAll('.stg').forEach(el => sio.observe(el));
+
+  // count-up numbers
+  const easeOut = p => 1 - Math.pow(1 - p, 3);
+  const countUp = (el) => {
+    const m = el.dataset.count.match(/^(\d+)(.*)$/);
+    if (!m){ return; }
+    const target = parseInt(m[1], 10), suf = m[2], dur = 1000, t0 = performance.now();
+    const tick = (t) => {
+      const p = Math.min((t - t0) / dur, 1);
+      el.textContent = Math.round(target * easeOut(p)) + suf;
+      if (p < 1) requestAnimationFrame(tick); else el.textContent = target + suf;
+    };
+    requestAnimationFrame(tick);
+  };
+  if (!reduce){
+    const cio = new IntersectionObserver((es) => {
+      es.forEach(e => { if (e.isIntersecting){ countUp(e.target); cio.unobserve(e.target); } });
+    }, { threshold:.6 });
+    document.querySelectorAll('[data-count]').forEach(el => cio.observe(el));
+  }
+
+  // Formspree async submit (only if configured)
+  const form = document.getElementById('quoteForm');
+  const status = document.getElementById('formStatus');
+  form.addEventListener('submit', async (e) => {
+    if (form.action.includes('YOUR_FORM_ID')) {
+      e.preventDefault();
+      status.style.color = 'var(--ink-dim)';
+      status.textContent = '表單尚未設定收件，請先用上方 LINE 或 Email 聯絡。';
+      return;
+    }
+    e.preventDefault();
+    status.style.color = 'var(--ink-dim)';
+    status.textContent = '送出中…';
+    try {
+      const res = await fetch(form.action, { method:'POST', body:new FormData(form), headers:{ Accept:'application/json' } });
+      if (res.ok){ status.style.color = 'var(--green)'; status.textContent = '已送出，我們會在 24 小時內回覆你！'; form.reset(); }
+      else { status.style.color = '#ff6b6b'; status.textContent = '送出失敗，請改用 LINE 或 Email 聯絡。'; }
+    } catch { status.style.color = '#ff6b6b'; status.textContent = '送出失敗，請改用 LINE 或 Email 聯絡。'; }
+  });
+</script>
+</body>
+</html>
